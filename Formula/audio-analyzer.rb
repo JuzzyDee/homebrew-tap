@@ -1,16 +1,16 @@
 class AudioAnalyzer < Formula
   desc "MCP server that gives Claude the ability to hear music"
   homepage "https://github.com/JuzzyDee/audio-analyzer-rs"
-  version "0.1.0"
+  version "0.3.0"
   license :cannot_represent
 
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/JuzzyDee/audio-analyzer-rs/releases/download/v#{version}/audio-analyzer-aarch64-apple-darwin.tar.gz"
-      sha256 "42190a7360ed3ac0aff9698f6450f6c9909118d7dcbecbdb3f57a42478d24b5c"
+      sha256 "2fcb6ba0cb4104ab2bb82ae009a8cc2eed9d4d8c132a5ba311585043ce19eff0"
     else
       url "https://github.com/JuzzyDee/audio-analyzer-rs/releases/download/v#{version}/audio-analyzer-x86_64-apple-darwin.tar.gz"
-      sha256 "897d1822ff5fa49dbb4311d6631f4fe788b556761b585ab1522149d500fd1bf8"
+      sha256 "ad8a11a565236255fa9d78e7f6dc0270813d71f7dc05bd1b65f16329f26bc2f7"
     end
   end
 
