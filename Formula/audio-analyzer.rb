@@ -17,78 +17,93 @@ class AudioAnalyzer < Formula
   def install
     bin.install "mcp-server" => "audio-analyzer-mcp"
     bin.install "cli" => "audio-analyzer"
+
+    # Install a setup script that configures Claude Code and Desktop
+    (bin / "audio-analyzer-setup").write <<~BASH
+      #!/bin/bash
+      set -e
+
+      MCP_PATH="#{opt_bin}/audio-analyzer-mcp"
+      ENTRY='{"command":"'"$MCP_PATH"'"}'
+
+      setup_config() {
+        local config_file="$1"
+        local app_name="$2"
+        local config_dir
+        config_dir="$(dirname "$config_file")"
+
+        if [ -f "$config_file" ]; then
+          # Check if already configured
+          if grep -q '"audio-analyzer"' "$config_file" 2>/dev/null; then
+            echo "  $app_name: audio-analyzer already configured"
+            return
+          fi
+
+          # File exists — patch it
+          if grep -q '"mcpServers"' "$config_file" 2>/dev/null; then
+            # mcpServers exists, add our entry
+            ruby -rjson -e '
+              c = JSON.parse(File.read("'"$config_file"'"))
+              c["mcpServers"]["audio-analyzer"] = {"command" => "'"$MCP_PATH"'"}
+              File.write("'"$config_file"'", JSON.pretty_generate(c) + "\\n")
+            '
+          else
+            # No mcpServers key, add it
+            ruby -rjson -e '
+              c = JSON.parse(File.read("'"$config_file"'"))
+              c["mcpServers"] = {"audio-analyzer" => {"command" => "'"$MCP_PATH"'"}}
+              File.write("'"$config_file"'", JSON.pretty_generate(c) + "\\n")
+            '
+          fi
+        else
+          # File doesn't exist — create it
+          mkdir -p "$config_dir"
+          echo '{"mcpServers":{"audio-analyzer":'"$ENTRY"'}}' | ruby -rjson -e 'puts JSON.pretty_generate(JSON.parse(STDIN.read))' > "$config_file"
+        fi
+
+        echo "  $app_name: configured successfully"
+      }
+
+      echo ""
+      echo "Setting up audio-analyzer for Claude..."
+      echo ""
+
+      # Claude Code
+      setup_config "$HOME/.claude/settings.json" "Claude Code"
+
+      # Claude Desktop (only if the directory exists)
+      DESKTOP_DIR="$HOME/Library/Application Support/Claude"
+      if [ -d "$DESKTOP_DIR" ]; then
+        setup_config "$DESKTOP_DIR/claude_desktop_config.json" "Claude Desktop"
+      else
+        echo "  Claude Desktop: not detected (skipped)"
+      fi
+
+      echo ""
+      echo "Done! Restart Claude Code or Claude Desktop to start using audio-analyzer."
+      echo "Just ask Claude to analyse any audio file — mp3, wav, flac, ogg, or aac."
+      echo ""
+    BASH
+
+    chmod 0755, bin / "audio-analyzer-setup"
   end
 
   def post_install
-    configure_claude_code
-    configure_claude_desktop
-  end
-
-  def configure_claude_code
-    config_dir = Pathname.new(Dir.home) / ".claude"
-    config_file = config_dir / "settings.json"
-    server_path = (bin / "audio-analyzer-mcp").to_s
-
-    patch_mcp_config(config_file, config_dir, server_path, "Claude Code")
-  end
-
-  def configure_claude_desktop
-    config_dir = Pathname.new(Dir.home) / "Library" / "Application Support" / "Claude"
-    config_file = config_dir / "claude_desktop_config.json"
-    server_path = (bin / "audio-analyzer-mcp").to_s
-
-    # Only configure if Claude Desktop appears to be installed
-    return unless config_dir.directory?
-
-    patch_mcp_config(config_file, config_dir, server_path, "Claude Desktop")
-  end
-
-  def patch_mcp_config(config_file, config_dir, server_path, app_name)
-    require "json"
-
-    config = if config_file.exist?
-      begin
-        JSON.parse(config_file.read)
-      rescue JSON::ParserError
-        ohai "Could not parse existing #{app_name} config, skipping auto-setup"
-        return
-      end
-    else
-      {}
-    end
-
-    config["mcpServers"] ||= {}
-
-    # Don't overwrite if already configured
-    if config["mcpServers"]["audio-analyzer"]
-      ohai "#{app_name}: audio-analyzer already configured"
-      return
-    end
-
-    config["mcpServers"]["audio-analyzer"] = {
-      "command" => server_path
-    }
-
-    config_dir.mkpath
-    config_file.write(JSON.pretty_generate(config) + "\n")
-
-    ohai "#{app_name}: audio-analyzer configured at #{config_file}"
+    # Run the setup script automatically
+    system bin / "audio-analyzer-setup"
   end
 
   def caveats
     <<~EOS
-      The audio-analyzer MCP server has been installed and configured.
+      To configure Claude Code and/or Claude Desktop, run:
+
+        audio-analyzer-setup
+
+      This is run automatically on install, but you can re-run it
+      any time (e.g. after installing Claude Desktop).
 
       CLI usage:
         audio-analyzer /path/to/song.mp3
-
-      MCP server:
-        The server has been automatically configured for any detected
-        Claude applications. Restart Claude Code or Claude Desktop
-        to start using it.
-
-        Just ask Claude to analyse an audio file and it will use the
-        audio-analyzer tools automatically.
 
       To remove the MCP configuration on uninstall, delete the
       "audio-analyzer" entry from:
