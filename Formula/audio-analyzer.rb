@@ -88,19 +88,14 @@ class AudioAnalyzer < Formula
     chmod 0755, bin / "audio-analyzer-setup"
   end
 
-  def post_install
-    # Run the setup script automatically
-    system bin / "audio-analyzer-setup"
-  end
-
   def caveats
     <<~EOS
       To configure Claude Code and/or Claude Desktop, run:
 
         audio-analyzer-setup
 
-      This is run automatically on install, but you can re-run it
-      any time (e.g. after installing Claude Desktop).
+      This auto-detects which apps you have and patches their config files.
+      You can re-run it any time (e.g. after installing Claude Desktop).
 
       CLI usage:
         audio-analyzer /path/to/song.mp3
