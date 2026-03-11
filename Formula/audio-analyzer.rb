@@ -1,16 +1,16 @@
 class AudioAnalyzer < Formula
   desc "MCP server that gives Claude the ability to hear music"
   homepage "https://github.com/JuzzyDee/audio-analyzer-rs"
-  version "0.3.2"
-  license :cannot_represent
+  version "0.4.0"
+  license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/JuzzyDee/audio-analyzer-rs/releases/download/v#{version}/audio-analyzer-aarch64-apple-darwin.tar.gz"
-      sha256 "d6efc3e691267767e5be8136ad2bf098917d853e72e61b304e0c82009f26e816"
+      sha256 "ccf28b2de8d4b85e42e28b83f94523cfd56f59676a50e48658164bfd69cf2285"
     else
       url "https://github.com/JuzzyDee/audio-analyzer-rs/releases/download/v#{version}/audio-analyzer-x86_64-apple-darwin.tar.gz"
-      sha256 "2007c20fed845178791814ea71b46c179c2f75f2d1ac10a255c2bb0997c83da6"
+      sha256 "95e8cf0abc5d9d2feb42653cf097dc5f53afe98d6031b2061f4e738e199522a6"
     end
   end
 
@@ -24,7 +24,7 @@ class AudioAnalyzer < Formula
       set -e
 
       MCP_PATH="#{opt_bin}/audio-analyzer-mcp"
-      ENTRY='{"command":"'"$MCP_PATH"'"}'
+      ENTRY='"{"command":"'"$MCP_PATH"'"}"'
 
       setup_config() {
         local config_file="$1"
@@ -33,30 +33,25 @@ class AudioAnalyzer < Formula
         config_dir="$(dirname "$config_file")"
 
         if [ -f "$config_file" ]; then
-          # Check if already configured
-          if grep -q '"audio-analyzer"' "$config_file" 2>/dev/null; then
+          if grep -q audio-analyzer "$config_file" 2>/dev/null; then
             echo "  $app_name: audio-analyzer already configured"
             return
           fi
 
-          # File exists — patch it
-          if grep -q '"mcpServers"' "$config_file" 2>/dev/null; then
-            # mcpServers exists, add our entry
+          if grep -q mcpServers "$config_file" 2>/dev/null; then
             ruby -rjson -e '
               c = JSON.parse(File.read("'"$config_file"'"))
               c["mcpServers"]["audio-analyzer"] = {"command" => "'"$MCP_PATH"'"}
-              File.write("'"$config_file"'", JSON.pretty_generate(c) + "\\n")
+              File.write("'"$config_file"'", JSON.pretty_generate(c) + "\n")
             '
           else
-            # No mcpServers key, add it
             ruby -rjson -e '
               c = JSON.parse(File.read("'"$config_file"'"))
               c["mcpServers"] = {"audio-analyzer" => {"command" => "'"$MCP_PATH"'"}}
-              File.write("'"$config_file"'", JSON.pretty_generate(c) + "\\n")
+              File.write("'"$config_file"'", JSON.pretty_generate(c) + "\n")
             '
           fi
         else
-          # File doesn't exist — create it
           mkdir -p "$config_dir"
           echo '{"mcpServers":{"audio-analyzer":'"$ENTRY"'}}' | ruby -rjson -e 'puts JSON.pretty_generate(JSON.parse(STDIN.read))' > "$config_file"
         fi
@@ -68,10 +63,8 @@ class AudioAnalyzer < Formula
       echo "Setting up audio-analyzer for Claude..."
       echo ""
 
-      # Claude Code
       setup_config "$HOME/.claude/settings.json" "Claude Code"
 
-      # Claude Desktop (only if the directory exists)
       DESKTOP_DIR="$HOME/Library/Application Support/Claude"
       if [ -d "$DESKTOP_DIR" ]; then
         setup_config "$DESKTOP_DIR/claude_desktop_config.json" "Claude Desktop"
