@@ -1,16 +1,16 @@
 class AudioAnalyzer < Formula
   desc "MCP server that gives Claude the ability to hear music"
   homepage "https://github.com/JuzzyDee/audio-analyzer-rs"
-  version "0.4.0"
+  version "0.5.0"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
       url "https://github.com/JuzzyDee/audio-analyzer-rs/releases/download/v#{version}/audio-analyzer-aarch64-apple-darwin.tar.gz"
-      sha256 "ccf28b2de8d4b85e42e28b83f94523cfd56f59676a50e48658164bfd69cf2285"
+      sha256 "e9264e395c82869bf052804dc7745f971ce69626c831083709f62c02981bdab7"
     else
       url "https://github.com/JuzzyDee/audio-analyzer-rs/releases/download/v#{version}/audio-analyzer-x86_64-apple-darwin.tar.gz"
-      sha256 "95e8cf0abc5d9d2feb42653cf097dc5f53afe98d6031b2061f4e738e199522a6"
+      sha256 "e79bcc8a713afba20a0928bbc662fa397a386b475b190825735c452acb175a95"
     end
   end
 
@@ -42,13 +42,15 @@ class AudioAnalyzer < Formula
             ruby -rjson -e '
               c = JSON.parse(File.read("'"$config_file"'"))
               c["mcpServers"]["audio-analyzer"] = {"command" => "'"$MCP_PATH"'"}
-              File.write("'"$config_file"'", JSON.pretty_generate(c) + "\n")
+              File.write("'"$config_file"'", JSON.pretty_generate(c) + "
+")
             '
           else
             ruby -rjson -e '
               c = JSON.parse(File.read("'"$config_file"'"))
               c["mcpServers"] = {"audio-analyzer" => {"command" => "'"$MCP_PATH"'"}}
-              File.write("'"$config_file"'", JSON.pretty_generate(c) + "\n")
+              File.write("'"$config_file"'", JSON.pretty_generate(c) + "
+")
             '
           fi
         else
